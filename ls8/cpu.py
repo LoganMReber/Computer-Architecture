@@ -2,13 +2,12 @@
 
 import sys
 
-# unit 0 - ALU , 1 - PC Mutator, 2 - Other
 
-OPS = {
-    0b00000001: {"unit": 1, "ops": 0, "code": 'HLT'},
-    0b10000010: {"unit": 1, "ops": 2, "code": 'LDI'},
-    0b01000111: {"unit": 1, "ops": 1, "code": 'PRN'},
-}
+'''
+0b00000001: {'HLT'}
+0b10000010: {'LDI'}
+0b01000111: {'PRN'}
+'''
 
 
 class CPU:
@@ -25,22 +24,17 @@ class CPU:
     def ram_write(self, loc, val):
         self.ram[loc] = val
 
-    def load(self):
+    def load(self, filepath):
         """Load a program into memory."""
 
         address = 0
-
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010,  # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111,  # PRN R0
-            0b00000000,
-            0b00000001,  # HLT
-        ]
+        file = open(filepath)
+        program = []
+        for line in file:
+            cmd = line.strip()
+            cmd = cmd.split(' ')[0]
+            if len(cmd) == 8:
+                program.append(int(cmd, 2))
 
         for instruction in program:
             self.ram[address] = instruction
@@ -48,19 +42,29 @@ class CPU:
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-        if op == "ADD":
+        if op == 0b00000:  # ADD
             self.reg[reg_a] += self.reg[reg_b]
-        # elif op == "SUB": etc
-        # LDI
+        elif op == 0b00001:
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == 0b00010:
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == 0b00011:
+            self.reg[reg_a] //= self.reg[reg_b]
+        elif op == 0b00100:
+            self.reg[reg_a] %= self.reg[reg_b]
+        elif op == 0b00101:
+            self.reg[reg_a] += 1
+        elif op == 0b00110:
+            self.reg[reg_a] -= 1
         else:
             raise Exception("Unsupported ALU operation")
 
     def cu(self, op, reg_a, reg_b):
-        if op == "HLT":
+        if op == 0b00000:  # NOP
             return
-        elif op == 'LDI':
+        elif op == 0b00010:  # LDI
             self.reg[reg_a] = reg_b
-        elif op == 'PRN':
+        elif op == 0b00111:  # PRN
             print(self.reg[reg_a])
         else:
             raise Exception("Unsupported CU operation")
@@ -86,22 +90,26 @@ class CPU:
         print()
 
     def run(self):
+
         self.pc = 0
-        ir = self.ram_read(self.pc)
-        instruction = OPS[ir]["code"]
-        while instruction != 'HLT':
-            if OPS[ir]['unit'] == 0:
+
+        while True:
+            ir = self.ram_read(self.pc)
+            if ir == 1:
+                break
+            size = (ir & 0b11000000) >> 6
+            alu = (ir & 0b00100000) >> 5
+            cmd = ir & 0b00011111
+            if alu:
                 self.alu(
-                    instruction,
+                    cmd,
                     self.ram_read(self.pc+1),
                     self.ram_read(self.pc+2)
                 )
             else:
                 self.cu(
-                    instruction,
+                    cmd,
                     self.ram_read(self.pc+1),
                     self.ram_read(self.pc+2)
                 )
-            self.pc += 1 + OPS[ir]['ops']
-            ir = self.ram_read(self.pc)
-            instruction = OPS[ir]["code"]
+            self.pc += size + 1
