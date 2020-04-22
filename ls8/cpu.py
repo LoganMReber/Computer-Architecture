@@ -17,6 +17,7 @@ class CPU:
         self.reg = [0]*8
         self.ram = [0]*256
         self.pc = 0
+        self.sp = 255
 
     def ram_read(self, loc):
         return self.ram[loc]
@@ -44,17 +45,17 @@ class CPU:
         """ALU operations."""
         if op == 0b00000:  # ADD
             self.reg[reg_a] += self.reg[reg_b]
-        elif op == 0b00001:
+        elif op == 0b00001:  # SUB
             self.reg[reg_a] -= self.reg[reg_b]
-        elif op == 0b00010:
+        elif op == 0b00010:  # MUL
             self.reg[reg_a] *= self.reg[reg_b]
-        elif op == 0b00011:
+        elif op == 0b00011:  # DIV
             self.reg[reg_a] //= self.reg[reg_b]
-        elif op == 0b00100:
+        elif op == 0b00100:  # MOD
             self.reg[reg_a] %= self.reg[reg_b]
-        elif op == 0b00101:
+        elif op == 0b00101:  # INC
             self.reg[reg_a] += 1
-        elif op == 0b00110:
+        elif op == 0b00110:  # DEC
             self.reg[reg_a] -= 1
         else:
             raise Exception("Unsupported ALU operation")
@@ -64,6 +65,12 @@ class CPU:
             return
         elif op == 0b00010:  # LDI
             self.reg[reg_a] = reg_b
+        elif op == 0b00101:  # PUSH
+            self.sp -= 1
+            self.ram_write(self.sp, self.reg[reg_a])
+        elif op == 0b00110:  # POP
+            self.reg[reg_a] = self.ram_read(self.sp)
+            self.sp += 1
         elif op == 0b00111:  # PRN
             print(self.reg[reg_a])
         else:
