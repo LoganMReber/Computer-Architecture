@@ -29,7 +29,7 @@
 
 ### Day 4: Get `call.ls8` running
 
-- [ ] Implement the CALL and RET instructions
+- [x] Implement the CALL and RET instructions
 - [ ] Implement Subroutine Calls and be able to run the `call.ls8` program
 
 ### Stretch
