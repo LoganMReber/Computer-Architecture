@@ -3,13 +3,6 @@
 import sys
 
 
-'''
-0b00000001: {'HLT'}
-0b10000010: {'LDI'}
-0b01000111: {'PRN'}
-'''
-
-
 class CPU:
     """Main CPU class."""
 
@@ -43,35 +36,46 @@ class CPU:
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-        if op == 0b00000:  # ADD
+        if op == 0b0000:  # ADD
             self.reg[reg_a] += self.reg[reg_b]
-        elif op == 0b00001:  # SUB
+        elif op == 0b0001:  # SUB
             self.reg[reg_a] -= self.reg[reg_b]
-        elif op == 0b00010:  # MUL
+        elif op == 0b0010:  # MUL
             self.reg[reg_a] *= self.reg[reg_b]
-        elif op == 0b00011:  # DIV
+        elif op == 0b0011:  # DIV
             self.reg[reg_a] //= self.reg[reg_b]
-        elif op == 0b00100:  # MOD
+        elif op == 0b0100:  # MOD
             self.reg[reg_a] %= self.reg[reg_b]
-        elif op == 0b00101:  # INC
+        elif op == 0b0101:  # INC
             self.reg[reg_a] += 1
-        elif op == 0b00110:  # DEC
+        elif op == 0b0110:  # DEC
             self.reg[reg_a] -= 1
         else:
             raise Exception("Unsupported ALU operation")
 
-    def cu(self, op, reg_a, reg_b):
-        if op == 0b00000:  # NOP
+    def mut(self, op, reg_a, size):
+        """PC Mutators"""
+        if op == 0b0000:  # CALL
+            self.sp -= 1
+            self.ram_write(self.sp, self.pc + size)
+            self.pc = self.reg[reg_a]
+
+        elif op == 0b0001:  # RET
+            self.pc = self.ram_read(self.sp)
+            self.sp += 1
+
+    def misc(self, op, reg_a, reg_b):
+        if op == 0b0000:  # NOP
             return
-        elif op == 0b00010:  # LDI
+        elif op == 0b0010:  # LDI
             self.reg[reg_a] = reg_b
         elif op == 0b00101:  # PUSH
             self.sp -= 1
             self.ram_write(self.sp, self.reg[reg_a])
-        elif op == 0b00110:  # POP
+        elif op == 0b0110:  # POP
             self.reg[reg_a] = self.ram_read(self.sp)
             self.sp += 1
-        elif op == 0b00111:  # PRN
+        elif op == 0b0111:  # PRN
             print(self.reg[reg_a])
         else:
             raise Exception("Unsupported CU operation")
@@ -82,10 +86,10 @@ class CPU:
         from run() if you need help debugging.
         """
 
-        print(f"TRACE: %02X %02X | %02X %02X |" % (
+        print(f"TRACE: %02X %02X %02X | %02X %02X %02X |" % (
             self.pc,
-            # self.fl,
-            # self.ie,
+            self.sp,
+            self.ram_read(self.sp),
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
             self.ram_read(self.pc + 2)
@@ -99,24 +103,27 @@ class CPU:
     def run(self):
 
         self.pc = 0
-
         while True:
             ir = self.ram_read(self.pc)
             if ir == 1:
                 break
             size = (ir & 0b11000000) >> 6
             alu = (ir & 0b00100000) >> 5
-            cmd = ir & 0b00011111
+            pcm = (ir & 0b00010000) >> 4
+            cmd = ir & 0b00001111
             if alu:
                 self.alu(
                     cmd,
                     self.ram_read(self.pc+1),
                     self.ram_read(self.pc+2)
                 )
+            elif pcm:
+                self.mut(cmd, self.ram_read(self.pc+1), size)
             else:
-                self.cu(
+                self.misc(
                     cmd,
                     self.ram_read(self.pc+1),
                     self.ram_read(self.pc+2)
                 )
-            self.pc += size + 1
+            if not pcm:
+                self.pc += size + 1
